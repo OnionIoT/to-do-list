@@ -1,0 +1,247 @@
+<link rel="import" href="../../lib/polymer/polymer.html">
+<link rel="import" href="../../elements/onion-app/onion-app.html">
+<link rel="import" href="/custom-elements/to-do-list.html">
+<link rel="import" href="../../elements/onion-device-list/onion-device-list.html">
+
+<dom-module id="onion-app-template">
+	<style>
+		
+		.tile{
+			height:200px;
+			width:200px;
+			background:yellow;
+			margin:10px;
+		}
+		.button{
+			width:100%;
+			height:120px;
+			text-align:center;
+			padding-top:60px;
+			font-size:40px;
+		}
+		.button:hover{
+			cursor:pointer;
+		}
+	</style>
+
+	<template>
+
+		<onion-app app-name="To-Do List" toolbar-background="#656D78"  background="#ecf0f1">
+			<onion-app-toolbar page-id="home">
+
+			</onion-app-toolbar>
+			
+			<onion-app-body page-id="home">
+				<div class="tile vertical layout center">
+					<div class="button" on-click="_gotoHomeList">Home-List</div>
+					<onion-device-list drop-down="true" selected-id="{{selectedDeviceHome}}" device-array="{{deviceArrayHome}}"  online-filter="true" online-only="true" share-filter="true" can-manage="true"></onion-device-list>
+
+				</div>	
+				
+				<div class="tile vertical layout center">
+					<div class="button" on-click="_gotoWorkList">Work-List</div>
+					<onion-device-list  drop-down="true" selected-id="{{selectedDeviceWork}}" device-array="{{deviceArrayWork}}" online-filter="true" online-only="true" share-filter="true" can-manage="true"></onion-device-list>
+
+				</div>	
+			</onion-app-body>
+
+			<onion-app-toolbar page-id="home-list">
+				<div class="horizontal layout center">
+					<button on-click="_gotoWorkList">Work List</button>
+					<button on-click="_goHome">Go Home</button>
+				</div>
+			</onion-app-toolbar>
+
+			<onion-app-body page-id="home-list">
+				<to-do-list form-title="To-Do at Home" list-title="Task List" next-task="{{nextHomeTask}}"></to-do-list>
+				
+			</onion-app-body>
+
+			<onion-app-toolbar page-id="work-list">
+				<div class="horizontal layout center">
+					<button on-click="_gotoHomeList">Home List</button>
+					<button on-click="_goHome">Go Home</button>
+				</div>
+			</onion-app-toolbar>
+
+			<onion-app-body page-id="work-list">
+				<to-do-list form-title="To-Do at Work" list-title="Task List" next-task="{{nextWorkTask}}"></to-do-list>
+			</onion-app-body>
+		</onion-app>
+	</template>
+
+	<script>
+		'use strict';
+
+		(function () {
+			
+			var ready = function() {
+				onionConsole.getService('onion-device-hardware-provider',(function(err,api){
+					this.expApi = api;
+				}).bind(this));
+				setInterval((function(){
+					this.deployMsg();
+				}.bind(this)),60000);
+			};
+			
+			var _gotoHomeList = function () {
+				this.switchPage('home-list');
+			};
+
+			var _gotoWorkList = function () {
+				this.switchPage('work-list');
+			};
+
+			var _goHome = function () {
+				this.switchPageHome();	
+			}
+
+			var loadNextTask = function(nextWorkTask,nextHomeTask) {
+				if(nextHomeTask && nextWorkTask){
+					if((nextHomeTask.timeVal || nextWorkTask.timeVal) && !(nextHomeTask.timeVal && nextWorkTask.timeVal) ){
+						if(nextHomeTask.timeVal){
+							var buffer = this.nextHomeTask;
+							buffer.device=this.selectedDeviceHome;
+							this.nextTask = buffer;
+						}	else {
+							var buffer = this.nextWorkTask;
+							buffer.device=this.selectedDeviceWork;
+							this.nextTask = buffer;
+						};
+						
+						
+					}
+					
+					
+					if(nextHomeTask.timeVal && nextWorkTask.timeVal){						
+							if(nextHomeTask.timeVal < nextWorkTask.timeVal){
+								var buffer = this.nextHomeTask;
+								buffer.device=this.selectedDeviceHome;
+								this.nextTask = buffer;
+							}
+							else {
+								var buffer = this.nextWorkTask;
+								buffer.device=this.selectedDeviceWork;
+								this.nextTask = buffer;
+							};
+					};
+				}
+			return;				
+			};
+			
+			var deployMsg = function(){
+				if(this.nextTask.time){
+					var currentTime=this.sysTime();
+					var timeOfTask=this.timeInNumber(this.nextTask);
+					var delta = currentTime - timeOfTask;
+					if(delta >= -1 && delta <= 1){
+						this.oledWrite(this.nextTask);
+						this.nextTask={};
+					}
+					else{
+						return 0;
+					}
+				}
+			}
+			
+			var oledWrite = function (e){
+				
+				this.expApi.oledWrite(e.device, e.task, {init: true}, (function (err,response){
+					this.handleExpApiResponse(err,response);
+				}).bind(this));
+			};
+			
+			var sendNotification = function (msg) {
+				onionConsole.sendNotification({
+					title: 'OLED Control',
+					message: msg
+				});
+			};
+			
+			var handleExpApiResponse = function (err, response) {
+				if (err) {
+					sendNotification('[Error]: Unable to communicate with Oled Expansion');
+				} else if (response.error) {
+					sendNotification('[Error]: Unable to communicate with selected device');
+				} 
+			}
+			
+			
+			
+			var sysTime = function(){
+				var date = new Date();
+				var hours = date.getHours();
+				var minutes = date.getMinutes();
+				var timeValue = 60*hours + minutes;
+				return timeValue;
+			};
+			
+			var timeInNumber = function (e){
+				console.log(e);
+				var hours = Number(e.time.substr(0,2)); 
+				var min = Number(e.time.substr(3,5)); 
+				var timeVal = 60*hours + min;
+				return timeVal;
+			};
+			
+			var print = function(a){
+				console.log(a);
+			}
+
+			Polymer({
+				is: 'onion-app-template',
+				behaviors: [Onion.AppBehavior],
+				observers: ['loadNextTask(nextWorkTask,nextHomeTask)'],
+				properties: {
+					nextHomeTask:{
+						type: Object,
+						value: {},
+						notify: true,
+					},
+					nextWorkTask:{
+						type: Object,
+						value: {},
+						notify: true,
+					},
+					nextTask:{
+						type: Object,
+						value: {},
+						notify: true
+					},
+					deviceArrayWork:{
+						type: Array,
+						value: [],
+						notify: true
+					},
+					deviceArrayHome:{
+						type: Array,
+						value: [],
+						notify: true
+					},
+					selectedDeviceHome:{
+						type: String,
+						value:'0',
+						notify:true
+					},
+					selectedDeviceWork:{
+						type: String,
+						value:'0',
+						notify: true
+					},
+				},
+				_goHome: _goHome,
+				_gotoWorkList: _gotoWorkList,
+				_gotoHomeList: _gotoHomeList,
+				loadNextTask:loadNextTask,
+				ready:ready,
+				sysTime:sysTime,
+				deployMsg:deployMsg,
+				handleExpApiResponse: handleExpApiResponse,
+				sendNotification:sendNotification,
+				timeInNumber:timeInNumber,
+				oledWrite:oledWrite,
+				print:print
+			});
+		})();
+	</script>
+</dom-module>

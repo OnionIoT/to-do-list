@@ -1,0 +1,199 @@
+<link rel="import" href="../../elements/bootstrap-panel/bootstrap-panel.html">
+
+<dom-module id="to-do-list">
+
+	<style>
+    .taskinput{
+      width=100%;
+    }
+    td{
+      padding-left:15px;
+      padding-right:15px;
+    }
+    #container{
+      width:300px;
+    }
+		.urgent{
+			background-color:red;
+		}
+		.notUrgent{
+			background-color:white;
+		}
+
+	</style>
+  
+	<template>
+    <div id="container">
+      <div>
+        <table>
+          <bootstrap-panel title="{{formTitle}}" color-scheme="default">
+            <tr>
+              <th scope="row">Task:</th>
+              <td><input class="taskinput" value={{newTask.task::input}} type='text' placeholder="Type Task" ></td>
+            </tr>
+            <tr>
+              <th scope="row">Time:</th>
+              <td><input class="taskinput" value={{newTask.time::input}} type='time' ></td>
+            </tr>
+            <tr>
+              <th scope="row"></th>
+              <td>
+                <button class="taskinput" on-click="addTaskToArray">Update Schedule!</button>
+              </td>
+            </tr>
+          </bootstrap-panel>
+        </table>
+      </div>
+
+      <div>
+        <table> 
+          <bootstrap-panel title="{{listTitle}}" color-scheme="default">
+            <template is="dom-repeat" items="{{taskArray}}" sort="_sortArray">
+							<template is="dom-if" if="{{willHappen(item,currentTime)}}">
+								<tr class$="{{isUrgent(item,currentTime)}}">
+									<td>[[item.task]]</td>
+									<td>[[item.time]]</td>
+								</tr>
+							</template>
+            </template>
+          </bootstrap-panel>
+        </table>
+      </div>
+    </div>
+	</template>
+
+	<script>
+		'use strict';
+		(function () {
+			
+			var ready = function() {        
+				this.setCurrentTime();
+					setInterval((function(){
+						this.setCurrentTime();
+						//Add, setNextTask, to update the pointer to the new task every 1 minute
+						this.setNextTask(function(){
+							this.nextTask={};
+							}.bind(this));
+					}).bind(this),60000);
+			};
+      
+		    var addTaskToArray = function(){
+		 				var timeValue = this.timeInNumber(this.newTask);
+						this.newTask.timeVal = timeValue;
+						var task = JSON.parse(JSON.stringify(this.newTask));
+						var dummyArray=[];
+						for (var i = 0; i < this.taskArray.length; i++) {
+								dummyArray.push(this.taskArray[i]);
+						};
+						dummyArray.push(task);
+						this.set('taskArray',dummyArray);
+						//Sorted the taskArray, so that array is set up to look for next Task
+						this.taskArray.sort(function(item1,item2){
+							return item1.timeVal > item2.timeVal;
+					});
+						//After task is added and sorted, set the new nextTask
+						this.setNextTask(function(){
+							this.nextTask={};
+						}.bind(this));
+		    };
+      
+			var timeInNumber = function (e){
+				var hours = Number(e.time.substr(0,2)); 
+				var min = Number(e.time.substr(3,5)); 
+				var timeVal = 60*hours + min;
+				return timeVal;
+			};
+			
+
+			var _sortArray = function(item1,item2){
+					return item1.timeVal > item2.timeVal;
+			};
+			
+			var setCurrentTime = function (){
+				var date = new Date();
+				var hours = date.getHours();
+				var minutes = date.getMinutes();
+				var timeValue = 60*hours + minutes;
+				this.currentTime=timeValue;
+				
+			};
+				
+			var willHappen = function (e,sysTime){
+				return e.timeVal > sysTime;
+			};
+			
+			var isUrgent = function (e,sysTime){
+				var time = sysTime+10;
+				if(e.timeVal < time){
+					return 'urgent';
+				}
+				else{
+					return 'notUrgent';
+				}
+			}
+			
+			var setNextTask = function(callback){
+				//Since array is in order, search array for the next relevant task and set it to nextTask global variable
+				for(var i=0; i < this.taskArray.length; i++){
+					if(!this.willHappen( this.taskArray[i] , this.currentTime)){
+						continue;
+					}
+					else{
+						this.nextTask = this.taskArray[i];
+						console.log("Should have been set here")
+						return 0;
+					}
+				};
+				
+				return callback
+			}
+			
+			
+
+			Polymer({
+				is: 'to-do-list',
+				ready: ready,
+        		addTaskToArray:addTaskToArray,
+				_sortArray:_sortArray,
+				timeInNumber:timeInNumber,
+				setCurrentTime:setCurrentTime,
+				willHappen:willHappen,
+				isUrgent:isUrgent,
+				setNextTask:setNextTask,
+				properties: {
+						taskArray: {
+							type: Array,
+							value: [],
+							notify: true,
+						},
+			            newTask:{
+			              type: Object,
+			              value:{},
+			              notify:true
+			            },
+								  nextTask:{
+			              type: Object,
+			              value:{},
+			              notify:true
+			            },
+						currentTime:{
+							type: Number,
+							value: 0,
+							notify:true
+						},
+						formTitle:{
+							type: String,
+							value: 'Create Task',
+							notify: true
+						},
+						listTitle:{
+							type: String,
+							value: 'Task List',
+							notify: true
+						},
+            
+				},
+			});
+		})();
+	</script>
+</dom-module>
