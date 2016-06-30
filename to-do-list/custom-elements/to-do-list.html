@@ -1,6 +1,6 @@
-<link rel="import" href="../../elements/bootstrap-panel/bootstrap-panel.html">
+<link rel="import" href="../../../elements/bootstrap-panel/bootstrap-panel.html">
 
-<dom-module id="to-do-list">
+<dom-module id="to-do-list-element">
 
 	<style>
     .taskinput{
@@ -49,12 +49,12 @@
         <table> 
           <bootstrap-panel title="{{listTitle}}" color-scheme="default">
             <template is="dom-repeat" items="{{taskArray}}" sort="_sortArray">
-							<template is="dom-if" if="{{willHappen(item,currentTime)}}">
-								<tr class$="{{isUrgent(item,currentTime)}}">
-									<td>[[item.task]]</td>
-									<td>[[item.time]]</td>
-								</tr>
-							</template>
+				<template is="dom-if" if="{{willHappen(item,currentTime)}}">
+					<tr class$="{{isUrgent(item,currentTime)}}">
+						<td>[[item.task]]</td>
+						<td>[[item.time]]</td>
+					</tr>
+				</template>
             </template>
           </bootstrap-panel>
         </table>
@@ -65,36 +65,39 @@
 	<script>
 		'use strict';
 		(function () {
-			
 			var ready = function() {        
 				this.setCurrentTime();
-					setInterval((function(){
-						this.setCurrentTime();
-						//Add, setNextTask, to update the pointer to the new task every 1 minute
-						this.setNextTask(function(){
-							this.nextTask={};
-							}.bind(this));
-					}).bind(this),60000);
+				setInterval((function(){
+					this.setCurrentTime();
+					//Add, setNextTask, to update the pointer to the new task every 1 minute
+					this.setNextTask(function(){
+						this.nextTask={};
+						}.bind(this));
+				}).bind(this),60000);
 			};
       
 		    var addTaskToArray = function(){
-		 				var timeValue = this.timeInNumber(this.newTask);
-						this.newTask.timeVal = timeValue;
-						var task = JSON.parse(JSON.stringify(this.newTask));
-						var dummyArray=[];
-						for (var i = 0; i < this.taskArray.length; i++) {
-								dummyArray.push(this.taskArray[i]);
-						};
-						dummyArray.push(task);
-						this.set('taskArray',dummyArray);
-						//Sorted the taskArray, so that array is set up to look for next Task
-						this.taskArray.sort(function(item1,item2){
-							return item1.timeVal > item2.timeVal;
-					});
-						//After task is added and sorted, set the new nextTask
-						this.setNextTask(function(){
-							this.nextTask={};
-						}.bind(this));
+ 				var timeValue = this.timeInNumber(this.newTask);
+				this.newTask.timeVal = timeValue;
+				var task = JSON.parse(JSON.stringify(this.newTask));
+				var dummyArray=[];
+
+				for (var i = 0; i < this.taskArray.length; i++) {
+					dummyArray.push(this.taskArray[i]);
+				};
+
+				dummyArray.push(task);
+				this.set('taskArray',dummyArray);
+
+				//Sorted the taskArray, so that array is set up to look for next Task
+				this.taskArray.sort(function(item1,item2){
+					return item1.timeVal > item2.timeVal;
+				});
+
+				//After task is added and sorted, set the new nextTask
+				this.setNextTask(function(){
+					this.nextTask={};
+				}.bind(this));
 		    };
       
 			var timeInNumber = function (e){
@@ -106,7 +109,7 @@
 			
 
 			var _sortArray = function(item1,item2){
-					return item1.timeVal > item2.timeVal;
+				return item1.timeVal > item2.timeVal;
 			};
 			
 			var setCurrentTime = function (){
@@ -126,32 +129,29 @@
 				var time = sysTime+10;
 				if(e.timeVal < time){
 					return 'urgent';
-				}
-				else{
+				} else {
 					return 'notUrgent';
 				}
-			}
+			};
 			
 			var setNextTask = function(callback){
 				//Since array is in order, search array for the next relevant task and set it to nextTask global variable
 				for(var i=0; i < this.taskArray.length; i++){
 					if(!this.willHappen( this.taskArray[i] , this.currentTime)){
 						continue;
-					}
-					else{
+					} else {
 						this.nextTask = this.taskArray[i];
 						console.log("Should have been set here")
 						return 0;
 					}
 				};
-				
 				return callback
-			}
+			};
 			
 			
 
 			Polymer({
-				is: 'to-do-list',
+				is: 'to-do-list-element',
 				ready: ready,
         		addTaskToArray:addTaskToArray,
 				_sortArray:_sortArray,
